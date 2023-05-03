@@ -1,14 +1,14 @@
-use crate::models::{in_memory_state::InMemoryState, post::BlogPost};
+use crate::models::{blog_post_store::BlogPostStore, post::BlogPost};
 
 use actix_web::{get, http::StatusCode, post, web, HttpResponse, HttpResponseBuilder, Responder};
 use actix_web_validator as validate;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::sync::{Arc, Mutex};
+use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
-#[derive(Deserialize, Serialize, Clone, Validate)]
+#[derive(Deserialize, Serialize, Clone, Validate, ToSchema)]
 pub struct CreatePost {
     #[validate(length(min = 1, max = 280))]
     message: String,
@@ -47,34 +47,48 @@ impl JSONErrorRepsonse {
     }
 }
 
+#[utoipa::path(
+    responses(
+        (status = 200, description = "Create a post")
+    )
+)]
 #[post("/")]
-pub async fn create_post(
-    memdb: web::Data<Arc<Mutex<InMemoryState>>>,
+pub(super) async fn create_post(
+    post_store: web::Data<BlogPostStore>,
     form_data: validate::Json<CreatePost>,
 ) -> impl Responder {
     let post = BlogPost::new(form_data.message.clone());
-    let mut guard = memdb.lock().unwrap();
-    guard.add_post(post);
-    return HttpResponse::Ok().json(guard.posts.clone());
+    post_store.add_post(post);
+    return HttpResponse::Ok().json(post_store.posts.lock().unwrap().clone());
 }
 
+#[utoipa::path(
+    responses(
+        (status = 200, description = "Get all posts")
+    )
+)]
 #[get("/")]
-pub async fn get_posts(memdb: web::Data<Arc<Mutex<InMemoryState>>>) -> impl Responder {
-    let guard = memdb.lock().unwrap();
-    return HttpResponse::Ok().json(&guard.posts);
+pub(super) async fn get_posts(post_store: web::Data<BlogPostStore>) -> impl Responder {
+    let posts = post_store.get_posts();
+    return HttpResponse::Ok().json(posts);
 }
 
+#[utoipa::path(
+    responses(
+        (status = 200, description = "Get post by id"),
+        (status = 404, description = "Post not found"),
+    )
+)]
 #[get("/{post_id}")]
-pub async fn get_post_by_id(
-    memdb: web::Data<Arc<Mutex<InMemoryState>>>,
+pub(super) async fn get_post_by_id(
+    post_store: web::Data<BlogPostStore>,
     path_info: validate::Path<GetPostById>,
 ) -> impl Responder {
-    let guard = memdb.lock().unwrap();
     let post_id = path_info.post_id.clone();
 
-    let post = guard.get_post(post_id);
+    let post = post_store.get_post(post_id);
     if post.is_none() {
-        return JSONErrorRepsonse::new(StatusCode::NOT_FOUND, "post not found").build();
+        return JSONErrorRepsonse::new(StatusCode::NOT_FOUND, "Post not found").build();
     }
     return HttpResponse::Ok().json(post.unwrap());
 }

@@ -18,3 +18,5 @@ chrono = { version = ">=0.4", features = ["serde"] }
 uuid = { version = ">=0.6", features = ["serde", "v4"] }
 futures-util = ">=0.3.1"
 env_logger = ">=0.7.1"
+utoipa-swagger-ui = { version = "3", features = ["actix-web"] }
+utoipa = { version = "3", features = ["actix_extras"] }

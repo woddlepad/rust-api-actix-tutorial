@@ -1,2 +1,2 @@
-pub mod in_memory_state;
+pub mod blog_post_store;
 pub mod post;
