@@ -9,7 +9,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 #[derive(Deserialize, Serialize, Clone, Validate)]
-pub struct Createpost {
+pub struct CreatePost {
     #[validate(length(min = 1, max = 280))]
     message: String,
 }
@@ -50,7 +50,7 @@ impl JSONErrorRepsonse {
 #[post("/")]
 pub async fn create_post(
     memdb: web::Data<Arc<Mutex<InMemoryState>>>,
-    form_data: validate::Json<Createpost>,
+    form_data: validate::Json<CreatePost>,
 ) -> impl Responder {
     let post = BlogPost::new(form_data.message.clone());
     let mut guard = memdb.lock().unwrap();
